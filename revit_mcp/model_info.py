@@ -9,7 +9,7 @@ from pyrevit.revit.db import ProjectInfo as RevitProjectInfo
 import pyrevit.revit.db.query as q
 import logging
 
-from utils import normalize_string, get_element_name
+from .utils import normalize_string, get_element_name
 
 logger = logging.getLogger(__name__)
 

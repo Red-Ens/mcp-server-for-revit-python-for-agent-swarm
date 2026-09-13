@@ -4,7 +4,7 @@ Placement Module for Revit MCP
 Handles family placement and element creation functionality
 """
 
-from utils import get_element_name, find_family_symbol_safely, normalize_string, element_id_value
+from .utils import get_element_name, find_family_symbol_safely, normalize_string, element_id_value
 from pyrevit import routes, revit, DB
 import json
 import traceback

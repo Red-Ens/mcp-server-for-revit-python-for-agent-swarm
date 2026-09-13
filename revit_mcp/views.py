@@ -17,7 +17,7 @@ try:
 except ImportError:
     from urllib import unquote
 
-from utils import normalize_string, get_element_name, element_id_value
+from .utils import normalize_string, get_element_name, element_id_value
 
 logger = logging.getLogger(__name__)
 
