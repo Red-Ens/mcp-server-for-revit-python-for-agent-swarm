@@ -8,11 +8,22 @@ BASE_URL = "http://127.0.0.1:48884/revit_mcp"
 TEST_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "test.rvt")
 
 
+def _auth_params():
+    """Fork patch: Revit routes require ?token=... (see revit_mcp/auth.py)."""
+    base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    path = os.environ.get("REVIT_MCP_TOKEN_FILE") or os.path.join(base, "revit-mcp", "token")
+    try:
+        with open(path, "r", encoding="ascii") as f:
+            return {"token": f.read().strip()}
+    except OSError:
+        return {}
+
+
 async def _revit_get(endpoint, ctx=None, **kwargs):
     """Real HTTP GET to pyRevit Routes."""
     timeout = kwargs.pop("timeout", 30.0)
     async with httpx.AsyncClient(timeout=timeout) as client:
-        response = await client.get(f"{BASE_URL}{endpoint}")
+        response = await client.get(f"{BASE_URL}{endpoint}", params=_auth_params())
         if response.status_code == 200:
             return response.json()
         return f"Error: {response.status_code} - {response.text}"
@@ -21,7 +32,7 @@ async def _revit_get(endpoint, ctx=None, **kwargs):
 async def _revit_post(endpoint, data, ctx=None, **kwargs):
     """Real HTTP POST to pyRevit Routes."""
     async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(f"{BASE_URL}{endpoint}", json=data)
+        response = await client.post(f"{BASE_URL}{endpoint}", json=data, params=_auth_params())
         if response.status_code == 200:
             return response.json()
         return f"Error: {response.status_code} - {response.text}"

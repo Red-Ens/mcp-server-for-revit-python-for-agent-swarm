@@ -25,6 +25,27 @@ REVIT_PORT = int(os.environ.get("REVIT_PORT", "48884"))
 BASE_URL = f"http://{REVIT_HOST}:{REVIT_PORT}/revit_mcp"
 
 
+# Fork patch: Revit routes require ?token=... (see revit_mcp/auth.py).
+# The token file is created by the extension when Revit loads it.
+def _token_path() -> str:
+    override = os.environ.get("REVIT_MCP_TOKEN_FILE")
+    if override:
+        return override
+    base = os.environ.get("APPDATA") or os.path.expanduser("~")
+    return os.path.join(base, "revit-mcp", "token")
+
+
+def _auth_params(params: Dict = None) -> Dict:
+    """Query parameters with the Revit token added (read on every call)."""
+    merged = dict(params or {})
+    try:
+        with open(_token_path(), "r", encoding="ascii") as f:
+            merged["token"] = f.read().strip()
+    except OSError:
+        pass  # Revit will answer 401 and the error explains why
+    return merged
+
+
 async def revit_get(endpoint: str, ctx: Context = None, **kwargs) -> Union[Dict, str]:
     """Simple GET request to Revit API"""
     return await _revit_call("GET", endpoint, ctx=ctx, **kwargs)
@@ -39,7 +60,7 @@ async def revit_image(endpoint: str, ctx: Context = None) -> Union[Image, str]:
     """GET request that returns an Image object"""
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.get(f"{BASE_URL}{endpoint}")
+            response = await client.get(f"{BASE_URL}{endpoint}", params=_auth_params())
             
             if response.status_code == 200:
                 data = response.json()
@@ -62,9 +83,10 @@ async def _revit_call(method: str, endpoint: str, data: Dict = None, ctx: Contex
             url = f"{BASE_URL}{endpoint}"
 
             if method == "GET":
-                response = await client.get(url, params=params)
+                response = await client.get(url, params=_auth_params(params))
             else:  # POST
-                response = await client.post(url, json=data, headers={"Content-Type": "application/json"})
+                response = await client.post(url, json=data, params=_auth_params(),
+                                             headers={"Content-Type": "application/json"})
 
             return response.json() if response.status_code == 200 else f"Error: {response.status_code} - {response.text}"
     except httpx.TimeoutException:

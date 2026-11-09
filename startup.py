@@ -7,10 +7,15 @@ Registers all MCP routes and initializes the API
 from pyrevit import routes
 import logging
 
+from revit_mcp.auth import GuardedAPI, init_token
+
 logger = logging.getLogger(__name__)
 
+# Fork patch: every revit_mcp route requires ?token=... (see revit_mcp/auth.py)
+init_token()
+
 # Initialize the main API
-api = routes.API("revit_mcp")
+api = GuardedAPI(routes.API("revit_mcp"))
 
 
 def register_routes():
